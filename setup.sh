@@ -41,8 +41,11 @@ mv 10-boot-conf /etc/init.simple/10-boot-conf
 mv 35-phd /etc/init.simple/35-phd
 mv 40-aphlict /etc/init.simple/40-aphlict
 mv 50-cronie /etc/init.simple/50-cronie
+mv 55-backup /etc/init.simple/55-backup
 mv php-fpm.conf /etc/php5/fpm/php-fpm.conf.template
 mv php.ini /etc/php5/fpm/php.ini
+mkdir /srv/scripts/
+mv backup.sh /srv/scripts/backup.sh
 mkdir /etc/phabricator-ssh
 mv sshd_config.phabricator /etc/phabricator-ssh/sshd_config.phabricator.template
 mv 45-phabricator-ssh /etc/init.simple/45-phabricator-ssh

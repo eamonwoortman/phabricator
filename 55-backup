@@ -1,0 +1,15 @@
+#!/bin/bash
+
+if [ "$BACKUP_DAILY" == "" ]; then
+    rm -f /etc/cron.d/backup_job
+    exit 0
+fi
+
+
+if [ ! -d $BACKUP_PATH ]; then
+    echo "BACKUP_PATH is not set or does not exist. Please bind a volume and set BACKUP_PATH accordingly."
+    exit 0
+fi
+
+echo "*/15 * * * * /srv/scripts/backup.sh" > /etc/cron.d/backup_job
+chmod +x /srv/scripts/backup.sh
