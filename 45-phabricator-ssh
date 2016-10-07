@@ -12,7 +12,7 @@ fi
 
 # Generate SSH host keys if they aren't already present
 if [ ! -f /baked ]; then
-  if [ -d $PHABRICATOR_HOST_KEYS_PATH ]; then
+  if [  "$(ls -A $PHABRICATOR_HOST_KEYS_PATH)" ]; then
     cp -v $PHABRICATOR_HOST_KEYS_PATH/* /etc/ssh/
   else
     /usr/sbin/sshd-gen-keys-start
