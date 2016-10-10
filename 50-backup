@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source /config.saved
+
 if [ "$BACKUP_DAILY" == "" ]; then
     rm -f /etc/cron.d/backup_job
     exit 0
@@ -11,5 +13,5 @@ if [ ! -d $BACKUP_PATH ]; then
     exit 0
 fi
 
-echo "*/15 * * * * /srv/scripts/backup.sh" > /etc/cron.d/backup_job
-chmod +x /srv/scripts/backup.sh
+chmod +x /srv/scripts/backup_script
+echo "*/15 * * * * bash -c /srv/scripts/backup_script" > /etc/cron.d/backup_job
