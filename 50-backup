@@ -13,5 +13,10 @@ if [ ! -d $BACKUP_PATH ]; then
     exit 0
 fi
 
+# change the timezone
+rm /etc/localtime
+ln -s /usr/share/zoneinfo/Europe/Amsterdam /etc/localtime
+
+# set a cron job 
 chmod +x /srv/scripts/backup_script
-echo "*/15 * * * * bash -c /srv/scripts/backup_script" > /etc/cron.d/backup_job
+echo "00 00 * * * root bash -c /srv/scripts/backup_script" > /etc/cron.d/backup_job

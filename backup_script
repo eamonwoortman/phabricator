@@ -1,3 +1,107 @@
 #!/bin/sh
-echo "Nightly Backup Successful: $(date)" >> /tmp/mybackup.log
-echo "NOOT NOOT" >> ${BACKUP_PATH}/backup.log
+
+source /config.saved
+
+DUMP=${BACKUP_PATH}/phabricator.dump.tar.bz2
+CODE=${BACKUP_PATH}/phabricator.code.tar.bz2
+REPO_BACKUP_FOLDER=${BACKUP_PATH}/repositories
+totalStart=$(($(date +%s%N)/1000000))
+
+mkdir -p /${BACKUP_PATH}/repositories
+
+if [ ! -d /tmp/backup/ ]; then
+    mkdir /tmp/backup/
+fi
+
+cd /tmp/backup/
+
+logfile=/tmp/backup_result.log
+exec > $logfile 2>&1
+
+echo "Current date: " `date`
+
+## Database dump
+# take mysql data dump of Phabricator database
+# update mysql credentials as needed
+echo "Dumping mysql databases..."
+mysqldump -uroot -h ${MYSQL_HOST} -p${MYSQL_PASS} --single-transaction --quick --all-databases > dump.sql
+if [ "$?" -eq 0 ]
+then
+    # compress the dump file
+    echo "Compressing mysql databases..."
+    tar -Pcj --format=posix -f $DUMP dump.sql
+    echo "Mysql backup done."
+else
+    echo "Could not backup the database, please check the log for errors."
+fi
+
+
+## Phabricator configurations
+echo "Backing up phabricator configs..."
+tar -Pcj --format=posix -f $CODE /srv/phabricator/phabricator/conf
+echo "Phabricator configs backups done."
+
+## Phabricator hosted repositories archives
+
+function backupRepos {
+    i=-1
+    /srv/phabricator/phabricator/bin/repository list-paths|
+    while read -r line; do
+        # skip the header
+        if [[ $((i++)) < 2 ]];
+        then
+            continue
+        fi
+
+        # last line, break
+        if [[ $line == *"=+=="* ]] 
+        then
+            break
+        fi
+        
+        repoTag=`echo ${line} | cut -d' ' -f 2`
+        repoPath=`echo ${line} | cut -d' ' -f 4`
+
+        if [[ ! -e $repoPath ]]; then
+            echo "Repository path not found, assumed not active: ${repoTag}"
+            continue
+        fi
+
+
+        startTime=$(($(date +%s%N)/1000000))
+        repoSize=$(du -sh $repoPath | cut -d$'\t' -f 1)
+        
+        # cd to our repository to flatten the archived folder structure
+        pushd ${repoPath}
+        tar -Pcj --format=posix -f ${REPO_BACKUP_FOLDER}/${repoTag}.tar.bz2 *
+        popd
+        
+        endTime=$(($(date +%s%N)/1000000))
+        duration=$((($endTime-$startTime)))  
+        durSecs=$(($duration/1000))
+        durMils=$(($duration%1000))
+        
+        echo "Backup completed for $repoTag, path '${repoPath}', size $repoSize and took $durSecs.$durMils seconds"    
+    done
+}
+
+repo_list_output=($(/srv/phabricator/phabricator/bin/repository list 2>&1))
+if [[ ${repo_list_output[@]} == *"no repositories."* ]]
+then
+    echo "No repositories to backup. Exiting."
+else
+    echo "Backing up repositories"
+    backupRepos
+fi 
+# - end Phabricator hosted repositories archives
+
+
+totalEnd=$(($(date +%s%N)/1000000))
+totalDuration=$(( $totalEnd - $totalStart )) 
+totalSeconds=$(($totalDuration/1000))
+totalMils=$(($totalDuration%1000))
+
+echo "Total duration is $totalSeconds.$totalMils seconds"
+
+mv $logfile ${BACKUP_PATH}/backup_result.log
+rm -rf /tmp/backup/
